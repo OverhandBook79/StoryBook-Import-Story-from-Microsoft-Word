@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Book</title>
+    <style>
+        /* General styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        h1 {
+            text-align: center;
+            padding-top: 20px;
+        }
+
+        #fileInput {
+            display: block;
+            margin: 20px auto;
+            font-size: 1rem;
+            padding: 10px;
+        }
+
+        /* Light/Dark mode toggle button */
+        #themeToggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 20px;
+            background-color: #f5f5f5;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Scrollable stories container */
+        #storiesContainer {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            margin: 20px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Light mode styles */
+        .light-mode {
+            background-color: #ffffff;
+            color: #333333;
+        }
+
+        /* Dark mode styles */
+        .dark-mode {
+            background-color: #333333;
+            color: #ffffff;
+        }
+
+        /* Fixed color for text within stories container */
+        .story p {
+            color: #333333; /* Fixed text color for stories */
+        }
+
+    </style>
+</head>
+
+<body id="body" class="light-mode">
+    <h1>Story Book</h1>
+
+    <!-- Theme toggle button (using emojis for light/dark mode) -->
+    <button id="themeToggle">🌞</button>
+
+    <!-- File input to select the Word document -->
+    <input type="file" id="fileInput" accept=".docx" />
+
+    <!-- Container to display stories -->
+    <div id="storiesContainer">
+        <!-- The parsed stories will be displayed here -->
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <script>
+        // Set the theme from localStorage on load
+        const body = document.getElementById("body");
+        const themeToggleButton = document.getElementById("themeToggle");
+        const storiesContainer = document.getElementById("storiesContainer");
+
+        // Load the theme and stories from localStorage if available
+        const savedTheme = localStorage.getItem("theme");
+        const savedStories = localStorage.getItem("stories");
+
+        if (savedTheme) {
+            body.className = savedTheme;
+            updateThemeButton(savedTheme);
+        }
+
+        // Display saved stories if available
+        if (savedStories) {
+            const stories = JSON.parse(savedStories);
+            stories.forEach(story => {
+                displayStory(story.content);
+            });
+        }
+
+        // Handle theme toggle
+        themeToggleButton.addEventListener("click", function () {
+            const currentTheme = body.className;
+            const newTheme = currentTheme === "light-mode" ? "dark-mode" : "light-mode";
+            body.className = newTheme;
+
+            // Save the selected theme to localStorage
+            localStorage.setItem("theme", newTheme);
+
+            // Update the button emoji based on the theme
+            updateThemeButton(newTheme);
+        });
+
+        // Function to update theme toggle button emoji based on current mode
+        function updateThemeButton(theme) {
+            if (theme === "light-mode") {
+                themeToggleButton.innerHTML = "🌞"; // Sun emoji for light mode
+            } else {
+                themeToggleButton.innerHTML = "🌙"; // Moon emoji for dark mode
+            }
+        }
+
+        // Function to handle file upload and story parsing
+        document.getElementById("fileInput").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                const arrayBuffer = e.target.result;
+
+                // Use mammoth to extract text from the Word file
+                mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                    .then(function (result) {
+                        const text = result.value;
+
+                        // Split the extracted text into paragraphs
+                        const stories = text.split("\n\n").map(paragraph => {
+                            return { content: paragraph.trim() };
+                        });
+
+                        // Save stories to localStorage
+                        localStorage.setItem("stories", JSON.stringify(stories));
+
+                        // Display the stories in the DOM
+                        stories.forEach(story => {
+                            displayStory(story.content);
+                        });
+                    })
+                    .catch(function (err) {
+                        console.error("Error parsing the Word file:", err);
+                    });
+            };
+
+            // Read the selected file as an ArrayBuffer
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Function to display a story in the DOM
+        function displayStory(content) {
+            const storyDiv = document.createElement('div');
+            storyDiv.classList.add('story');
+            storyDiv.innerHTML = `<p>${content}</p>`;
+            storiesContainer.appendChild(storyDiv);
+        }
+    </script>
+</body>
+
+</html>
